@@ -18,6 +18,7 @@ use Mautic\LeadBundle\Entity\StagesChangeLog;
 use Mautic\PluginBundle\Entity\IntegrationEntityRepository;
 use Mautic\StageBundle\Entity\Stage;
 use MauticPlugin\MauticCrmBundle\Api\HubspotApi;
+use Symfony\Component\VarDumper\VarDumper;
 
 /**
  * Class DexterousIntegration.
@@ -64,10 +65,6 @@ class DexterousIntegration extends CrmAbstractIntegration
                 $this->getClientSite() => 'mautic.dexterous.form.site',
         ];
     }
-    public function getApiUrl()
-    {
-        
-    }
     public function getAuthenticationType()
     {
         return 'basic';
@@ -77,7 +74,7 @@ class DexterousIntegration extends CrmAbstractIntegration
      */
     public function getClientIdKey()
     {
-        return 'EMAIL';
+        return 'username';
     }
     
     /**
@@ -85,7 +82,7 @@ class DexterousIntegration extends CrmAbstractIntegration
      */
     public function getClientSecretKey()
     {
-        return 'PASSWORD';
+        return 'password';
     }
     
     /**
@@ -93,7 +90,7 @@ class DexterousIntegration extends CrmAbstractIntegration
      */
     public function getClientSite()
     {
-        return 'SITE';
+        return 'site';
     }
     
 
@@ -144,6 +141,15 @@ class DexterousIntegration extends CrmAbstractIntegration
         return $this->getFormFieldsByObject('contacts', $settings);
     }
 
+    public function isAuthorized()
+    {
+        if (!$this->isConfigured()) {
+            return false;
+        }
+        
+        return (!empty($this->keys['username']) && !empty($this->keys['password']) && !empty($this->keys['site']));
+    }
+
     /**
      * @return array|mixed
      */
@@ -185,8 +191,10 @@ class DexterousIntegration extends CrmAbstractIntegration
                                 ];
                             }
                         }
-
-                        $this->cache->set('leadFields'.$cacheSuffix, $hubsFields[$object]);
+                        if (isset( $hubsFields[$object])) {
+                            $this->cache->set('leadFields'.$cacheSuffix, $hubsFields[$object]);
+                        }
+                        
                     }
                 }
             }
@@ -227,17 +235,6 @@ class DexterousIntegration extends CrmAbstractIntegration
         return $formattedLeadData;
     }
 
-    /**
-     * {@inheritdoc}
-     *
-     * @return bool
-     */
-    public function isAuthorized()
-    {
-        $keys = $this->getKeys();
-
-        return isset($keys[$this->getAuthTokenKey()]);
-    }
 
     /**
      * @return mixed
