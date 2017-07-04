@@ -68,6 +68,11 @@ return [
                     'mautic.helper.user',
                 ],
             ],
+            'mautic.integration.dexterous' => [
+                'class'     => \MauticPlugin\MauticCrmBundle\Integration\DexterousIntegration::class,
+                'arguments' => [
+                ],
+            ],
             'mautic.integration.salesforce' => [
                 'class'     => \MauticPlugin\MauticCrmBundle\Integration\SalesforceIntegration::class,
                 'arguments' => [
