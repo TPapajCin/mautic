@@ -8,18 +8,18 @@ use Mautic\PluginBundle\Exception\ApiErrorException;
 class DexterousApi extends CrmApi
 {
 
-    protected function request($operation, $parameters = [], $method = 'GET')
+    protected function request($operation, $parameters = [], $method = 'GET', $object = null)
     {
         
         if (isset($this->keys['password'])) {
             $parameters['password'] = $this->keys['password'];
             $parameters['username'] = $this->keys['username'];
         }
-        $apiUrl = $this->integration->getApiUrl();
         
+        $apiUrl = $this->keys['site'];
         $url = sprintf('%s/%s', $apiUrl, $endpoint);
         
-        $response = $this->integration->makeRequest($url, $parameters, $method, ['encode_parameters' => 'json', 'cw-app-id' => $this->integration->getCompanyCookieKey()]);
+        $response = $this->integration->makeRequest($url, $parameters, $method);
         
         if (is_array($response) && !empty($response['status']) && $response['status'] == 'error') {
             throw new ApiErrorException($response['error']);
@@ -40,11 +40,13 @@ class DexterousApi extends CrmApi
      */
     public function getLeadFields($object = 'contacts')
     {
-        if ($object == 'company') {
-            $object = 'companies'; //hubspot company object name
+        if (!isset($this->keys['site']))
+            return [];
+        if ($object == 'contact') {
+            $object = 'contacts';
         }
 
-        return $this->request('v2/properties', [], 'GET', $object);
+        return $this->request(sprintf('mobile/api/%s/properties.json', $object), [], 'GET', $object);
     }
 
     /**
@@ -56,18 +58,12 @@ class DexterousApi extends CrmApi
      */
     public function createLead(array $data, $lead, $updateLink = false)
     {
-        /*
-         * As Hubspot integration requires a valid email
-         * If the email is not valid we don't proceed with the request
-         */
-        $email  = $data['email'];
         $result = [];
-        //Check if the is a valid email
-        MailHelper::validateEmail($email);
+        
         //Format data for request
         $formattedLeadData = $this->integration->formatLeadDataForCreateOrUpdate($data, $lead, $updateLink);
         if ($formattedLeadData) {
-            $result = $this->request('v1/contact/createOrUpdate/email/'.$email, $formattedLeadData, 'POST');
+            $result = $this->request('mobile/api/contacts/create.json', $formattedLeadData, 'POST');
         }
 
         return $result;
@@ -82,7 +78,7 @@ class DexterousApi extends CrmApi
      */
     public function getContacts($params = [])
     {
-        return $this->request('mobile/api/contact.json?', $params, 'GET', 'contacts');
+        return $this->request('mobile/api/contact.json', $params, 'GET', 'contacts');
     }
 
     /**
@@ -109,6 +105,9 @@ class DexterousApi extends CrmApi
      */
     public function createProperty($propertyName, $object = 'properties')
     {
+        if (!isset($this->keys['site'])) {
+            return [];
+        }
         return $this->request('v1/contacts/properties', ['name' => $propertyName,  'groupName' => 'contactinformation', 'type' => 'string'], 'POST', $object);
     }
 }
