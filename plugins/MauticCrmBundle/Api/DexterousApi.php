@@ -8,18 +8,18 @@ use Mautic\PluginBundle\Exception\ApiErrorException;
 class DexterousApi extends CrmApi
 {
 
-    protected function request($operation, $parameters = [], $method = 'GET', $object = null)
+    protected function request($endpoint, $parameters = [], $method = 'GET', $object = null)
     {
-        
-        if (isset($this->keys['password'])) {
-            $parameters['password'] = $this->keys['password'];
-            $parameters['username'] = $this->keys['username'];
+        $keys = $this->integration->getKeys();
+        if (isset($keys['password'])) {
+//             $parameters['password'] = $keys['password'];
+//             $parameters['username'] = $keys['username'];
         }
         
-        $apiUrl = $this->keys['site'];
+        $apiUrl = $keys['site'];
         $url = sprintf('%s/%s', $apiUrl, $endpoint);
         
-        $response = $this->integration->makeRequest($url, $parameters, $method);
+        $response = $this->integration->makeRequest($url, $parameters, $method, ['encode_parameters' => 'json']);
         
         if (is_array($response) && !empty($response['status']) && $response['status'] == 'error') {
             throw new ApiErrorException($response['error']);
@@ -38,19 +38,20 @@ class DexterousApi extends CrmApi
     /**
      * @return mixed
      */
-    public function getLeadFields($object = 'contacts')
+    public function getLeadFields($object = 'contact')
     {
-        if (!isset($this->keys['site']))
+        $keys = $this->integration->getKeys();
+        if (!isset($keys['site']))
             return [];
-        if ($object == 'contact') {
-            $object = 'contacts';
+        if ($object == 'contacts') {
+            $object = 'contact';
         }
 
         return $this->request(sprintf('mobile/api/%s/properties.json', $object), [], 'GET', $object);
     }
 
     /**
-     * Creates Hubspot lead.
+     * Creates Dexterous lead.
      *
      * @param array $data
      *
@@ -59,13 +60,10 @@ class DexterousApi extends CrmApi
     public function createLead(array $data, $lead, $updateLink = false)
     {
         $result = [];
-        
         //Format data for request
         $formattedLeadData = $this->integration->formatLeadDataForCreateOrUpdate($data, $lead, $updateLink);
-        if ($formattedLeadData) {
-            $result = $this->request('mobile/api/contacts/create.json', $formattedLeadData, 'POST');
-        }
-
+        $result = $this->request('mobile/api/contact.json', $formattedLeadData, 'POST');
+        
         return $result;
     }
 
