@@ -18,7 +18,6 @@ use Mautic\LeadBundle\Entity\StagesChangeLog;
 use Mautic\PluginBundle\Entity\IntegrationEntityRepository;
 use Mautic\StageBundle\Entity\Stage;
 use MauticPlugin\MauticCrmBundle\Api\HubspotApi;
-use Symfony\Component\VarDumper\VarDumper;
 
 /**
  * Class DexterousIntegration.
@@ -520,8 +519,6 @@ class DexterousIntegration extends CrmAbstractIntegration
         if (empty($mappedData)) {
             return false;
         }
-        
-        VarDumper::dump($lead);
         
         
         if ($this->isAuthorized()) {
