@@ -56,7 +56,7 @@ class AjaxController extends CommonAjaxController
 
         $dataArray = ['success' => 0, 'date' => $originalDate];
 
-        if (!empty($eventId) && !empty($contactId) && !empty($newDate)) {
+        if (!empty($eventId) && !empty($contactId) && !empty($newDate)) { 
             if ($log = $this->getContactEventLog($eventId, $contactId)) {
                 $newDate = new \DateTime($newDate);
 

@@ -42,7 +42,7 @@
     RewriteRule .? - [L]
 
     # Rewrite all other queries to the front controller.
-    RewriteRule .? %{ENV:BASE}/index.php [L]
+    RewriteRule .? %{ENV:BASE}/index_dev.php [L]
 </IfModule>
 
 <IfModule !mod_rewrite.c>
