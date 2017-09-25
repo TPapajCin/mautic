@@ -18,6 +18,8 @@ use Mautic\LeadBundle\Entity\StagesChangeLog;
 use Mautic\PluginBundle\Entity\IntegrationEntityRepository;
 use Mautic\StageBundle\Entity\Stage;
 use MauticPlugin\MauticCrmBundle\Api\HubspotApi;
+use Symfony\Component\VarDumper\VarDumper;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 
 /**
  * Class DexterousIntegration.
@@ -31,15 +33,6 @@ class DexterousIntegration extends CrmAbstractIntegration
      */
     protected $userHelper;
 
-    /**
-     * HubspotIntegration constructor.
-     *
-     * @param UserHelper $userHelper
-     */
-    public function __construct()
-    {
-        parent::__construct();
-    }
 
     /**
      * {@inheritdoc}
@@ -117,7 +110,7 @@ class DexterousIntegration extends CrmAbstractIntegration
     {
         return true;
     }
-
+    
     /**
      * Get available company fields for choices in the config UI.
      *
@@ -129,7 +122,18 @@ class DexterousIntegration extends CrmAbstractIntegration
     {
         return $this->getFormFieldsByObject('company', $settings);
     }
-
+    
+    /**
+     * Get available folder fields for choices in the config UI.
+     *
+     * @param array $settings
+     *
+     * @return array
+     */
+    public function getFormFolderFields($settings = [])
+    {
+        return $this->getFormFieldsByObject('folder', $settings);
+    }
     /**
      * @param array $settings
      *
@@ -167,7 +171,7 @@ class DexterousIntegration extends CrmAbstractIntegration
             $settings       = $this->settings->getFeatureSettings();
             $hubspotObjects = isset($settings['objects']) ? $settings['objects'] : ['contacts'];
         }
-
+        
         try {
             if ($this->isAuthorized()) {
                 if (!empty($hubspotObjects) and is_array($hubspotObjects)) {
@@ -181,6 +185,7 @@ class DexterousIntegration extends CrmAbstractIntegration
                         }
 
                         $leadFields = $this->getApiHelper()->getLeadFields($object);
+                        
                         if (isset($leadFields)) {
                             foreach ($leadFields as $fieldInfo) {
                                 $hubsFields[$object][$fieldInfo['name']] = [
@@ -196,6 +201,7 @@ class DexterousIntegration extends CrmAbstractIntegration
                         
                     }
                 }
+                
             }
         } catch (\Exception $e) {
             $this->logIntegrationError($e);
@@ -207,7 +213,29 @@ class DexterousIntegration extends CrmAbstractIntegration
 
         return $hubsFields;
     }
-
+    
+    /**
+     * Format the lead data to the structure that HubSpot requires for the createOrUpdate request.
+     *
+     * @param array $leadData All the lead fields mapped
+     *
+     * @return array
+     */
+    public function formatLeadDataForFolderCreateOrUpdate($leadData, $lead, $updateLink = false)
+    {
+        $formattedLeadData = [];
+        
+        if (!$updateLink) {
+            foreach ($leadData as $field => $value) {
+                if ($field == 'lifecyclestage' || $field == 'associatedcompanyid') {
+                    continue;
+                }
+                $formattedLeadData[$field] = $value;
+            }
+        }
+        
+        return $formattedLeadData;
+    }
     /**
      * Format the lead data to the structure that HubSpot requires for the createOrUpdate request.
      *
@@ -218,7 +246,7 @@ class DexterousIntegration extends CrmAbstractIntegration
     public function formatLeadDataForCreateOrUpdate($leadData, $lead, $updateLink = false)
     {
         $formattedLeadData = [];
-
+        
         if (!$updateLink) {
             foreach ($leadData as $field => $value) {
                 if ($field == 'lifecyclestage' || $field == 'associatedcompanyid') {
@@ -250,13 +278,42 @@ class DexterousIntegration extends CrmAbstractIntegration
     public function appendToForm(&$builder, $data, $formArea)
     {
         if ($formArea == 'features') {
+        $builder->add(
+                'folderCreate',
+                'yesno_button_group',
+                [
+                        'label'       => $this->getTranslator()->trans('mautic.crm.form.folder_create', ['%crm%' => 'Dexterous']),
+                        'choices' => [
+                                'Yes' => true,
+                                'No' => false,
+                        ]
+                ]
+                );
+        if (isset($data['folderCreate']) && $data['folderCreate'])
+            {
+                
+                $builder->add(
+                        'typeId',
+                        'text',
+                        [
+                                'label'       => $this->getTranslator()->trans('mautic.crm.form.folder_create.type', ['%crm%' => 'Dexterous']),
+                        ]
+                        );
+                $builder->add(
+                        'departmentId',
+                        'text',
+                        [
+                                'label'       => $this->getTranslator()->trans('mautic.crm.form.folder_create.department', ['%crm%' => 'Dexterous']),
+                        ]
+                        );
+            }
             $builder->add(
                 'objects',
                 'choice',
                 [
                     'choices' => [
-                        'contacts' => 'mautic.dexterous.object.contact',
-                        'company'  => 'mautic.dexterous.object.company',
+                            'contacts' => 'mautic.dexterous.object.contact',
+                            'company'  => 'mautic.dexterous.object.company'
                     ],
                     'expanded'    => true,
                     'multiple'    => true,
