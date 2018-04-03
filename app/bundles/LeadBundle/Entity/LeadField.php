@@ -181,7 +181,9 @@ class LeadField extends FormEntity
             ->nullable()
             ->build();
 
-        $builder->addField('object', 'string');
+        $builder->createField('object', 'string')
+            ->nullable()
+            ->build();
 
         $builder->createField('properties', 'array')
             ->nullable()
@@ -461,6 +463,7 @@ class LeadField extends FormEntity
     {
         return $this->object;
     }
+
     /**
      * Set object.
      *
@@ -485,6 +488,7 @@ class LeadField extends FormEntity
     {
         return $this->order;
     }
+
     /**
      * Set isVisible.
      *

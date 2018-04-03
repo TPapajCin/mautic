@@ -13,6 +13,7 @@ namespace Mautic\LeadBundle\Model;
 
 use Mautic\CoreBundle\Helper\Chart\BarChart;
 use Mautic\CoreBundle\Helper\Chart\ChartQuery;
+use Mautic\CoreBundle\Helper\Chart\LineChart;
 use Mautic\CoreBundle\Helper\Chart\PieChart;
 use Mautic\CoreBundle\Helper\CoreParametersHelper;
 use Mautic\CoreBundle\Helper\DateTimeHelper;
@@ -273,7 +274,7 @@ class ListModel extends FormModel
                     'type'     => 'lookup_id',
                     'callback' => 'activateSegmentFilterTypeahead',
                 ],
-                'operators' => $this->getOperatorsForFieldType('text'),
+                'operators' => $this->getOperatorsForFieldType('lookup_id'),
                 'object'    => 'lead',
             ],
             'points' => [
@@ -361,6 +362,46 @@ class ListModel extends FormModel
                 'operators' => $this->getOperatorsForFieldType('multiselect'),
                 'object'    => 'lead',
             ],
+            'device_type' => [
+                'label'      => $this->translator->trans('mautic.lead.list.filter.device_type'),
+                'properties' => [
+                    'type' => 'device_type',
+                ],
+                'operators' => $this->getOperatorsForFieldType('multiselect'),
+                'object'    => 'lead',
+            ],
+            'device_brand' => [
+                'label'      => $this->translator->trans('mautic.lead.list.filter.device_brand'),
+                'properties' => [
+                    'type' => 'device_brand',
+                ],
+                'operators' => $this->getOperatorsForFieldType('multiselect'),
+                'object'    => 'lead',
+            ],
+            'device_os' => [
+                'label'      => $this->translator->trans('mautic.lead.list.filter.device_os'),
+                'properties' => [
+                    'type' => 'device_os',
+                ],
+                'operators' => $this->getOperatorsForFieldType('multiselect'),
+                'object'    => 'lead',
+            ],
+            'device_model' => [
+                'label'      => $this->translator->trans('mautic.lead.list.filter.device_model'),
+                'properties' => [
+                    'type' => 'text',
+                ],
+                'operators' => $this->getOperatorsForFieldType(
+                    [
+                        'include' => [
+                            '=',
+                            'like',
+                            'regexp',
+                        ],
+                    ]
+                ),
+                'object' => 'lead',
+            ],
             'dnc_bounced' => [
                 'label'      => $this->translator->trans('mautic.lead.list.filter.dnc_bounced'),
                 'properties' => [
@@ -423,6 +464,9 @@ class ListModel extends FormModel
                             '!like',
                             'regexp',
                             '!regexp',
+                            'startsWith',
+                            'endsWith',
+                            'contains',
                         ],
                     ]
                 ),
@@ -491,6 +535,9 @@ class ListModel extends FormModel
                             '!like',
                             'regexp',
                             '!regexp',
+                            'startsWith',
+                            'endsWith',
+                            'contains',
                         ],
                     ]
                 ),
@@ -510,6 +557,9 @@ class ListModel extends FormModel
                             '!like',
                             'regexp',
                             '!regexp',
+                            'startsWith',
+                            'endsWith',
+                            'contains',
                         ],
                     ]
                 ),
@@ -529,10 +579,21 @@ class ListModel extends FormModel
                             '!like',
                             'regexp',
                             '!regexp',
+                            'startsWith',
+                            'endsWith',
+                            'contains',
                         ],
                     ]
                 ),
                 'object' => 'lead',
+            ],
+            'source_id' => [
+                'label'      => $this->translator->trans('mautic.lead.list.filter.source.id'),
+                'properties' => [
+                    'type' => 'number',
+                ],
+                'operators' => $this->getOperatorsForFieldType('default'),
+                'object'    => 'lead',
             ],
             'notification' => [
                 'label'      => $this->translator->trans('mautic.lead.list.filter.notification'),
@@ -592,6 +653,8 @@ class ListModel extends FormModel
                         'include' => [
                             '=',
                             '!=',
+                            'empty',
+                            '!empty',
                         ],
                     ]
                 ),
@@ -666,7 +729,7 @@ class ListModel extends FormModel
     /**
      * @param string $alias
      *
-     * @return mixed
+     * @return array
      */
     public function getUserLists($alias = '')
     {
@@ -1255,6 +1318,7 @@ class ListModel extends FormModel
 
         return $results;
     }
+
     /**
      * Get a list of top (by leads added) lists.
      *
@@ -1505,5 +1569,26 @@ class ListModel extends FormModel
         ];
 
         return $chartData;
+    }
+
+    /**
+     * Get line chart data of hits.
+     *
+     * @param string    $unit       {@link php.net/manual/en/function.date.php#refsect1-function.date-parameters}
+     * @param \DateTime $dateFrom
+     * @param \DateTime $dateTo
+     * @param string    $dateFormat
+     * @param array     $filter
+     *
+     * @return array
+     */
+    public function getSegmentContactsLineChartData($unit, \DateTime $dateFrom, \DateTime $dateTo, $dateFormat = null, $filter = [])
+    {
+        $chart    = new LineChart($unit, $dateFrom, $dateTo, $dateFormat);
+        $query    = new ChartQuery($this->em->getConnection(), $dateFrom, $dateTo);
+        $contacts = $query->fetchTimeData('lead_lists_leads', 'date_added', $filter);
+        $chart->setDataset($this->translator->trans('mautic.lead.segments.contacts'), $contacts);
+
+        return $chart->render();
     }
 }

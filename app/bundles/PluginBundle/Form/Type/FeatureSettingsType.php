@@ -92,7 +92,6 @@ class FeatureSettingsType extends AbstractType
                 if (empty($fields)) {
                     $fields = $integrationObject->getFormLeadFields($settings);
                     $fields = (isset($fields[0])) ? $fields[0] : $fields;
-                    unset($fields['company']);
                 }
 
                 if (isset($settings['feature_settings']['objects']) and in_array('company', $settings['feature_settings']['objects'])) {
@@ -139,13 +138,11 @@ class FeatureSettingsType extends AbstractType
             );
 
             if (!empty($integrationCompanyFields)) {
-                list($specialInstructions, $alertType) = $integrationObject->getFormNotes('leadfield_match');
-
                 $form->add(
                     'companyFields',
                     'integration_company_fields',
                     [
-                        'label'                => 'mautic.integration.comapanyfield_matches',
+                        'label'                => 'mautic.integration.companyfield_matches',
                         'required'             => true,
                         'mautic_fields'        => $companyFields,
                         'data'                 => $data,

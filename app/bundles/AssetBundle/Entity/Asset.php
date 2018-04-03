@@ -648,18 +648,6 @@ class Asset extends FormEntity
     }
 
     /**
-     * @param $prop
-     * @param $val
-     */
-    protected function isChanged($prop, $val)
-    {
-        $getter  = 'get'.ucfirst($prop);
-        $current = $this->$getter();
-
-        parent::isChanged($prop, $val);
-    }
-
-    /**
      * Constructor.
      */
     public function __construct()
@@ -705,7 +693,6 @@ class Asset extends FormEntity
     public function preUpload()
     {
         if (null !== $this->getFile()) {
-
             // set the asset title as original file name if title is missing
             if (null === $this->getTitle()) {
                 $this->setTitle($this->file->getClientOriginalName());
@@ -728,7 +715,6 @@ class Asset extends FormEntity
     {
         // the file property can be empty if the field is not required
         if (null === $this->getFile()) {
-
             // check for the remote and set type data
             if ($this->isRemote()) {
                 $this->setFileInfoFromFile();
