@@ -5,6 +5,8 @@ namespace MauticPlugin\MauticCrmBundle\Api;
 use Mautic\EmailBundle\Helper\MailHelper;
 use Mautic\PluginBundle\Exception\ApiErrorException;
 use Symfony\Component\VarDumper\VarDumper;
+use Mautic\LeadBundle\Entity\Lead;
+use Mautic\LeadBundle\Entity\Company;
 
 class DexterousApi extends CrmApi
 {
@@ -16,7 +18,7 @@ class DexterousApi extends CrmApi
      * @param string $method
      * @param unknown $object
      * @throws ApiErrorException
-     * @return mixed|string
+     * @return Joomla\Http\Response|string
      */
     protected function request($endpoint, $parameters = [], $method = 'GET', $object = null)
     {
@@ -31,21 +33,19 @@ class DexterousApi extends CrmApi
 
         $params = [];
         $params['encode_parameters'] = 'json';
-        if ($object == 'folder')
+        if ($object == 'folder' || $method == 'POST')
         {
-            
             $params['return_raw'] = true;
         }
         
         $response = $this->integration->makeRequest($url, $parameters, $method, $params);
-        
         if (isset($response->headers['Location']))
         {
-            
             $params = [];
             $params['encode_parameters'] = 'json';
-            $response = $this->integration->makeRequest($response->headers['Location'].'.json', [], 'GET', $params);
+            $response = $this->integration->makeRequest($apiUrl.$response->headers['Location'].'.json', [], 'GET', $params);
         }
+        
         if (is_array($response) && !empty($response['status']) && $response['status'] == 'error') {
             throw new ApiErrorException($response['error']);
         } elseif (is_array($response) && !empty($response['errors'])) {
@@ -69,7 +69,7 @@ class DexterousApi extends CrmApi
         if (!isset($keys['site']))
             return [];
         if (in_array($object, ['contact','contacts'])) {
-            return json_decode('[{"name":"id","label":"id"},{"name":"firstName","label":"firstName"},{"name":"lastName","label":"lastName"},{"name":"email","label":"email"},{"name":"company","label":"company"},{"name":"information","label":"information"},{"name":"mobilePhone","label":"mobilePhone"},{"name":"phone","label":"phone"},{"name":"tags","label":"tags"}]', true);
+            return json_decode('[{"name":"id","label":"id"},{"name":"mautic_contact_id","label":"mauticContactId"},{"name":"firstName","label":"firstName"},{"name":"lastName","label":"lastName"},{"name":"email","label":"email"},{"name":"company","label":"company"},{"name":"information","label":"information"},{"name":"mobilePhone","label":"mobilePhone"},{"name":"phone","label":"phone"},{"name":"tags","label":"tags"}]', true);
             
         }
         
@@ -86,6 +86,8 @@ class DexterousApi extends CrmApi
      * Creates Dexterous lead.
      *
      * @param array $data
+     * @param Lead $lead
+     * @param boolean $updateLink
      *
      * @return mixed
      */
@@ -97,13 +99,77 @@ class DexterousApi extends CrmApi
         $settings = $this->integration->getIntegrationSettings()->getFeatureSettings();
         $formattedLeadData = $this->integration->formatLeadDataForCreateOrUpdate($data, $lead, $updateLink);
         
-        if (isset($settings['folderCreate']) && ($settings['folderCreate']))
-        {
+        $dexterousCompany = null;
+        $dexterousCompanySearch = null;
+        
+        //If the company isnt empty, then we want to create / grab the company and attach to the lead
+        if (!empty($lead->getPrimaryCompany())) {
+            /**
+             *
+             * @var Company $mauticCompany
+             *
+             */
+            $mauticCompany = $lead->getPrimaryCompany();
+            if (!empty ($mauticCompany['companyemail'])) {
+                $params = ['email' => $mauticCompany['companyemail']];
+                $dexterousCompanySearch = $this->request('api/company/companies.json', $params);
+            }
+            
+            //If there is nothing in the dexterous about the email, lookup by company name
+            if (count($dexterousCompanySearch) == 0 && !empty($mauticCompany['companyname'])) {
+                $params = ['name' => $mauticCompany['companyname']];
+                $dexterousCompanySearch = $this->request('api/company/companies.json', $params);
+            }
+            
+            if (count($dexterousCompanySearch) == 0) {
+                if (isset($settings['companyCreate']) && ($settings['companyCreate'])) {
+                    $params = [];
+                    $params['name'] = $mauticCompany['companyname'];
+                    $params['segment'] = 0;
+                    $params['email'] = $mauticCompany['companyemail'];
+                    $params['activeCompany'] = true;
+                    
+                    $dexterousCompany = $this->request('api/company/companies.json', ['company' => $params], 'POST');
+                }
+                    
+            } else {
+                $dexterousCompany = $dexterousCompanySearch[0];
+            }
+        }
+        
+        $dexterousCompanyId = null;
+        if ((isset($dexterousCompany['id'])) ) {
+            $dexterousCompanyId = $dexterousCompany['id'];
+        }
+        
+        
+        //Actually create the lead if required
+        //First see if the lead is already in the system
+        $params = ['email' => $lead->getEmail()];
+        $dexterousContactSearch = $this->request('api/company/contacts/search.json', $params);
+        
+        //If we didnt find anything, then let's make it
+        if (count($dexterousContactSearch) == 0) {
+            if ($dexterousCompanyId !== null) {
+                $formattedLeadData['company'] = $dexterousCompanyId;
+            }
+            $dexterousContact = $this->request('api/company/contacts.json', ['contact' => $formattedLeadData], 'POST');
+        } else {
+            $dexterousContact = $dexterousContactSearch[0];
+        }
+        if (isset($dexterousContact['company']) && isset($dexterousContact['company']['id'])) {
+            $dexterousCompany = $dexterousContact['company'];
+            $dexterousCompanyId = $dexterousContact['company']['id'];
+        }
+        
+        if (isset($settings['folderCreate']) && ($settings['folderCreate'])) {
             $departmentId = isset($settings['departmentId'])?$settings['departmentId']:1;
             $typeId = isset($settings['typeId'])?$settings['typeId']:1;
-            $formattedFolderData = ['job' => [ 'name' => $formattedLeadData['email'], 'department' => $departmentId, 'type' => $typeId]];
+            
+            $formattedFolderData = ['job' => [ 'name' => $formattedLeadData['email'], 'department' => $departmentId, 'type' => $typeId, 'mauticContact' => $lead->getId(), 'company' => $dexterousCompanyId]];
+            
 
-            $result = $this->request('api/core/jobs.json', $formattedFolderData, 'POST', 'folder');
+	        $result = $this->request('api/core/jobs.json', $formattedFolderData, 'POST', 'folder');
             if (isset($result['id'])) 
             {
                 $metaData = [];
@@ -117,19 +183,13 @@ class DexterousApi extends CrmApi
                 $formattedMetaData = ['meta' => $metaData];
                 $metaResult = $this->request('api/core/jobs/'.$result['id'].'/meta.json', $formattedMetaData, 'PUT', 'folder');
             }
-        } else
-        {
-            
-            $result  = $this->request('mobile/api/contact.json', $formattedLeadData, 'POST');
-            
         }
-            
         
         return $result;
     }
 
     /**
-     * gets Hubspot contact.
+     * gets dexterous contact.
      *
      * @param array $data
      *
@@ -150,10 +210,10 @@ class DexterousApi extends CrmApi
     public function getCompanies($params, $id)
     {
         if ($id) {
-            return $this->request('v2/companies/'.$id, $params, 'GET', 'companies');
+            return $this->request('/api/company/companies/'.$id.'.json', $params, 'GET', 'companies');
         }
 
-        return $this->request('v2/companies/recent/modified', $params, 'GET', 'companies');
+        return $this->request('/api/company/companies.json', $params, 'GET', 'companies');
     }
 
     /**

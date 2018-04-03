@@ -278,15 +278,26 @@ class DexterousIntegration extends CrmAbstractIntegration
     public function appendToForm(&$builder, $data, $formArea)
     {
         if ($formArea == 'features') {
-        $builder->add(
+            $builder->add(
                 'folderCreate',
                 'yesno_button_group',
                 [
-                        'label'       => $this->getTranslator()->trans('mautic.crm.form.folder_create', ['%crm%' => 'Dexterous']),
-                        'choices' => [
-                                'Yes' => true,
-                                'No' => false,
-                        ]
+                    'label'       => $this->getTranslator()->trans('mautic.crm.form.folder_create', ['%crm%' => 'Dexterous']),
+                    'choices' => [
+                        'Yes' => true,
+                        'No' => false,
+                    ]
+                ]
+                );
+            $builder->add(
+                'companyCreate',
+                'yesno_button_group',
+                [
+                    'label'       => $this->getTranslator()->trans('mautic.crm.form.company_create', ['%crm%' => 'Dexterous']),
+                    'choices' => [
+                        'Yes' => true,
+                        'No' => false,
+                    ]
                 ]
                 );
         if (isset($data['folderCreate']) && $data['folderCreate'])

@@ -972,7 +972,7 @@ abstract class AbstractIntegration
             CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
             CURLOPT_HEADER         => 1,
             CURLOPT_RETURNTRANSFER => 1,
-            CURLOPT_FOLLOWLOCATION => 0,
+            CURLOPT_FOLLOWLOCATION => 1,
             CURLOPT_REFERER        => $this->getRefererUrl(),
             CURLOPT_USERAGENT      => $this->getUserAgent(),
         ];

@@ -90,6 +90,10 @@ return [
                 'class' => 'MauticPlugin\MauticSocialBundle\Form\Type\FacebookType',
                 'alias' => 'socialmedia_facebook',
             ],
+            'mautic.form.type.social.dexterous' => [
+                'class' => 'MauticPlugin\MauticSocialBundle\Form\Type\DexterousType',
+                'alias' => 'socialmedia_dexterous',
+            ],
             'mautic.form.type.social.twitter' => [
                 'class' => 'MauticPlugin\MauticSocialBundle\Form\Type\TwitterType',
                 'alias' => 'socialmedia_twitter',
@@ -170,6 +174,12 @@ return [
         'integrations' => [
             'mautic.integration.facebook' => [
                 'class'     => \MauticPlugin\MauticSocialBundle\Integration\FacebookIntegration::class,
+                'arguments' => [
+
+                ],
+            ],
+            'mautic.integration.dexterousauth' => [
+                'class'     => \MauticPlugin\MauticSocialBundle\Integration\DexterousIntegration::class,
                 'arguments' => [
 
                 ],
